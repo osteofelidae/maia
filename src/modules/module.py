@@ -1,7 +1,6 @@
 """
 Base module class.
 """
-from symtable import Function
 
 # INTERNAL DEPENDENCIES
 from src.utils.path_utils import *
@@ -9,6 +8,9 @@ from src.utils.path_utils import *
 # DEPENDENCIES
 import socket
 import threading
+from queue import PriorityQueue, Empty
+import json
+import traceback
 
 # CONSTANTS
 LOCALHOST = "127.0.0.1"
@@ -22,7 +24,8 @@ class AsyncModule:
             self,
             port: int,
             allowed_incoming_connections: list[str],
-            id_to_port_map: map[str: int]  # TODO autodetect from 'custom'
+            id_to_port_map: dict[str: int],  # TODO autodetect from 'custom'
+            instruction_priority = {}
     ):
         """
         Constructor
@@ -38,12 +41,24 @@ class AsyncModule:
         self.port = port
         self._connections = {}  # Outgoing sockets
         self._running = False  # Whether module is running
+        self._instruction_queue = PriorityQueue()
+        self._instruction_priority = instruction_priority
+
+        # Add threads
+        self.add_thread(
+            "_instruction_handler",
+            self._handle_instructions
+        )
+        self.add_thread(
+            "_incoming_connection_handler",
+            self._handle_incoming_connections
+        )
 
     def add_thread(
             self,
             thread_id: str,
             target,
-            args: tuple
+            args: tuple = ()
     ):
         """
         Add a thread
@@ -59,8 +74,8 @@ class AsyncModule:
 
         # Create thread
         new_thread = threading.Thread(
-            target=target,
-            args=args
+            target=self._thread_target_wrapper,
+            args=(target, args)
         )
 
         # Register thread
@@ -70,6 +85,23 @@ class AsyncModule:
 
         # Chaining
         return self
+
+    def _thread_target_wrapper(
+            self,
+            target,
+            args
+    ):
+        # TODO docstring
+        try:
+            print(args)
+            target(*args)
+        except:  # TODO make this actually catch stuff
+            if self._running:
+                traceback.print_exc()
+
+            else:
+                pass
+
 
     def start(
             self,
@@ -83,20 +115,62 @@ class AsyncModule:
 
         # Start all threads
         else:
-            pass  # TODO start all threads
+            self._running = True
 
+            for module_thread in self.module_threads.values():
+                module_thread.start()
 
         # Chaining
         return self
 
     def stop(
             self,
-            thread_id: str
+            thread_id: str = None
     ):
         # TODO all
 
+        # Stop
+        self._running = False
+
+        # Disconnect all
+        self.disconnect()
+
+        # Wait for all threads to end
+        for module_id, module_thread in self.module_threads.items():
+            try:
+                module_thread.join()
+            except:
+                pass
+
         # Chaining
         return self
+
+    def process_instruction(
+            self,
+            instruction
+    ):
+        # TODO docstring
+
+        pass
+
+    def _handle_instructions(self):
+        # TODO docstring
+
+        # While running
+        while self._running:
+
+            # Wait for instruction
+            try:
+                instruction = self._instruction_queue.get(block=True, timeout=0.5)[1]
+
+                # Process instruction
+                self.process_instruction(instruction)
+
+            except Empty:
+                pass
+
+
+
 
     def _handle_client(
             self,
@@ -111,16 +185,27 @@ class AsyncModule:
         """
 
         # TODO handle message
-        while True:
-            try:
-                message = client_sock.recv(1024).decode()
-                if not message:
-                    break  # If empty message, client disconnected
-                print(f"Received from {client_addr}: {message}")
-            except ConnectionResetError:
-                break  # Handle unexpected disconnection
+        # While running
+        while self._running:
 
-    def _recv_connections(self):
+            try:
+                # Get message
+                message = json.loads(client_sock.recv(4096).decode())
+
+                # Get priority
+                if message.get("instruction_type") in self._instruction_priority.keys():  # TODO change to config
+                    priority = self._instruction_priority.get(message.get("instruction_type"))
+                else:
+                    priority = 100  # TODO change to config
+
+                # Add to queue
+                self._instruction_queue.put((priority, message))
+
+            except socket.timeout:
+                pass
+
+
+    def _handle_incoming_connections(self):
         """
         Receive connections from authorized modules
         :return: None
@@ -138,42 +223,58 @@ class AsyncModule:
 
             # Accept connection
             client_sock, client_addr = server.accept()
+            client_sock.settimeout(0.5)
             client_ip, client_port = client_addr
 
             # Add and start thread
-            module_id = [k for k, v in self._id_to_port_map.items() if v == client_port][0]
-            thread_id = f"_client_handler_{module_id}"
+            thread_id = f"_client_handler_{client_port}"
             self.add_thread(
                 thread_id=thread_id,
                 target=self._handle_client,
                 args=(client_sock, client_addr)
             )
-            self.start_thread(thread_id)
+            self.start(thread_id)
 
 
-    def _connect(
+    def connect(
             self,
-            module_id: str
+            module_id: str = None
     ):
         """
         Connect to other module
         :param module_id: other module ID
-        :return: None
+        :return: self
         """
 
-        # Connect
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((LOCALHOST, self._id_to_port_map.get(module_id)))
+        # If module id provided
+        if module_id:
 
-        # Store
-        self._connections.update({
-            module_id: client
-        })
+            # Connect
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect((LOCALHOST, self._id_to_port_map.get(module_id)))
 
+            # Store
+            self._connections.update({
+                module_id: client
+            })
 
-        return
+        # Chaining
+        return self
 
-    def _disconnect(
+    def send(
+            self,
+            module_id: str,
+            instruction: dict
+    ):
+        # TODO docstring
+
+        # Change to string
+        str_instruction = json.dumps(instruction)
+
+        # Send
+        self._connections.get(module_id).sendall(str_instruction.encode())
+
+    def disconnect(
             self,
             module_id: str = None
     ):
@@ -185,4 +286,5 @@ class AsyncModule:
 
         # Disconnect all modules
         else:
-            pass # TODO
+            for module_id, sock in self._connections.items():
+                sock.close()
