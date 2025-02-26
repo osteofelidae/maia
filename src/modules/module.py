@@ -40,7 +40,7 @@ class AsyncModule:
         self._id_to_port_map = id_to_port_map
         self.port = port
         self._connections = {}  # Outgoing sockets
-        self._running = False  # Whether module is running
+        self._running = True  # Whether module is running
         self._instruction_queue = PriorityQueue()
         self._instruction_priority = instruction_priority
 
@@ -91,11 +91,15 @@ class AsyncModule:
             target,
             args
     ):
-        # TODO docstring
+        """
+        Wrapper for thread function
+        :param target: target function
+        :param args: args to target function
+        :return: None
+        """
         try:
-            print(args)
             target(*args)
-        except:  # TODO make this actually catch stuff
+        except:
             if self._running:
                 traceback.print_exc()
 
@@ -107,7 +111,11 @@ class AsyncModule:
             self,
             thread_id: str = None
     ):
-        # TODO docstring
+        """
+        Start specific thread, or all threads
+        :param thread_id: id of thread; None if start all threads
+        :return: self
+        """
 
         # Start specific thread
         if thread_id:
@@ -124,10 +132,12 @@ class AsyncModule:
         return self
 
     def stop(
-            self,
-            thread_id: str = None
+            self
     ):
-        # TODO all
+        """
+        Stop all threads
+        :return: self
+        """
 
         # Stop
         self._running = False
@@ -149,12 +159,19 @@ class AsyncModule:
             self,
             instruction
     ):
-        # TODO docstring
+        """
+        Process single instruction; override in derived classes
+        :param instruction: instruction dict
+        :return: None
+        """
 
         pass
 
     def _handle_instructions(self):
-        # TODO docstring
+        """
+        Loop over handling instruction
+        :return: None
+        """
 
         # While running
         while self._running:
@@ -184,22 +201,24 @@ class AsyncModule:
         :return: None
         """
 
-        # TODO handle message
         # While running
         while self._running:
 
             try:
                 # Get message
-                message = json.loads(client_sock.recv(4096).decode())
+                try:
+                    message = json.loads(client_sock.recv(4096).decode())
 
-                # Get priority
-                if message.get("instruction_type") in self._instruction_priority.keys():  # TODO change to config
-                    priority = self._instruction_priority.get(message.get("instruction_type"))
-                else:
-                    priority = 100  # TODO change to config
+                    # Get priority
+                    if message.get("instruction_type") in self._instruction_priority.keys():  # TODO change to config
+                        priority = self._instruction_priority.get(message.get("instruction_type"))
+                    else:
+                        priority = 100  # TODO change to config
 
-                # Add to queue
-                self._instruction_queue.put((priority, message))
+                    # Add to queue
+                    self._instruction_queue.put((priority, message))
+                except:
+                    pass
 
             except socket.timeout:
                 pass
@@ -266,7 +285,12 @@ class AsyncModule:
             module_id: str,
             instruction: dict
     ):
-        # TODO docstring
+        """
+        Send message to other module
+        :param module_id: id of module to send to
+        :param instruction: instruction dict to send
+        :return: self
+        """
 
         # Change to string
         str_instruction = json.dumps(instruction)
@@ -274,11 +298,18 @@ class AsyncModule:
         # Send
         self._connections.get(module_id).sendall(str_instruction.encode())
 
+        # Chaining
+        return self
+
     def disconnect(
             self,
             module_id: str = None
     ):
-        # TODO docstring
+        """
+        Disconnect from module, or all modules
+        :param module_id: other module id
+        :return: self
+        """
 
         # Disconnect specific module
         if module_id:
@@ -288,3 +319,6 @@ class AsyncModule:
         else:
             for module_id, sock in self._connections.items():
                 sock.close()
+
+        # Chaining
+        return self
