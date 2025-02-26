@@ -1,0 +1,10 @@
+{
+    "id_to_port_map": {},
+
+    "default_instruction_priority": 100,
+    "instruction_priorities": {
+
+    },
+
+    "socket_timeout": 0.5
+}

@@ -1,4 +1,3 @@
-# DESCRIPTION
 """
 Provides path utilities for all other files.
 """

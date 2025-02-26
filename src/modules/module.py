@@ -1,16 +1,16 @@
 """
 Base module class.
 """
+from json import JSONDecodeError
 
 # INTERNAL DEPENDENCIES
-from src.utils.path_utils import *
+from src.utils.config_utils import *
 
 # DEPENDENCIES
 import socket
 import threading
 from queue import PriorityQueue, Empty
 import json
-import traceback
 
 # CONSTANTS
 LOCALHOST = "127.0.0.1"
@@ -23,26 +23,24 @@ class AsyncModule:
     def __init__(
             self,
             port: int,
-            allowed_incoming_connections: list[str],
-            id_to_port_map: dict[str: int],  # TODO autodetect from 'custom'
-            instruction_priority = {}
+            module_id_to_port_map: dict[str: int] = config.get("module_id_to_port_map"),
+            instruction_priorities: dict[str: int] = config.get("instruction_priorities")
     ):
         """
         Constructor
         :param port: own localhost port
-        :param allowed_incoming_connections: list of IDs of allowed incoming connections
-        :param id_to_port_map: map of module IDs to localhost ports
+        :param module_id_to_port_map: map of module IDs to localhost ports
+        :param instruction_priorities: map of instruction names to priorities
         """
 
         # Instance variables
         self.module_threads = {}  # Internal threads
-        self._allowed_incoming_connections = allowed_incoming_connections  # Allowed incoming connection IDs
-        self._id_to_port_map = id_to_port_map
+        self._id_to_port_map = module_id_to_port_map
         self.port = port
         self._connections = {}  # Outgoing sockets
         self._running = True  # Whether module is running
         self._instruction_queue = PriorityQueue()
-        self._instruction_priority = instruction_priority
+        self._instruction_priorities = instruction_priorities
 
         # Add threads
         self.add_thread(
@@ -70,12 +68,12 @@ class AsyncModule:
 
         # Error if thread already exists
         if thread_id in self.module_threads.keys():
-            return  # TODO exception
+            raise KeyError(f"Thread with ID 'thread_id' already exists")
 
         # Create thread
         new_thread = threading.Thread(
-            target=self._thread_target_wrapper,
-            args=(target, args)
+            target=target,
+            args=args
         )
 
         # Register thread
@@ -85,26 +83,6 @@ class AsyncModule:
 
         # Chaining
         return self
-
-    def _thread_target_wrapper(
-            self,
-            target,
-            args
-    ):
-        """
-        Wrapper for thread function
-        :param target: target function
-        :param args: args to target function
-        :return: None
-        """
-        try:
-            target(*args)
-        except:
-            if self._running:
-                traceback.print_exc()
-
-            else:
-                pass
 
 
     def start(
@@ -149,7 +127,9 @@ class AsyncModule:
         for module_id, module_thread in self.module_threads.items():
             try:
                 module_thread.join()
-            except:
+
+            # If thread is already stopped
+            except RuntimeError:
                 pass
 
         # Chaining
@@ -191,13 +171,11 @@ class AsyncModule:
 
     def _handle_client(
             self,
-            client_sock,
-            client_addr
+            client_sock
     ):
         """
         Handle client module (incoming connection)
         :param client_sock: client socket
-        :param client_addr: client address
         :return: None
         """
 
@@ -210,14 +188,14 @@ class AsyncModule:
                     message = json.loads(client_sock.recv(4096).decode())
 
                     # Get priority
-                    if message.get("instruction_type") in self._instruction_priority.keys():  # TODO change to config
-                        priority = self._instruction_priority.get(message.get("instruction_type"))
+                    if message.get("instruction_type") in self._instruction_priorities.keys():
+                        priority = self._instruction_priorities.get(message.get("instruction_type"))
                     else:
-                        priority = 100  # TODO change to config
+                        priority = 100
 
                     # Add to queue
                     self._instruction_queue.put((priority, message))
-                except:
+                except JSONDecodeError:
                     pass
 
             except socket.timeout:
@@ -232,27 +210,31 @@ class AsyncModule:
 
         # Instantiate server obj
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.settimeout(config.get("socket_timeout"))
         server.bind((LOCALHOST, self.port))
         server.listen()
-
-        # TODO check valid socket
 
         # Receive connections while running
         while self._running:
 
-            # Accept connection
-            client_sock, client_addr = server.accept()
-            client_sock.settimeout(0.5)
-            client_ip, client_port = client_addr
+            try:
 
-            # Add and start thread
-            thread_id = f"_client_handler_{client_port}"
-            self.add_thread(
-                thread_id=thread_id,
-                target=self._handle_client,
-                args=(client_sock, client_addr)
-            )
-            self.start(thread_id)
+                # Accept connection
+                client_sock, client_addr = server.accept()
+                client_sock.settimeout(config.get("socket_timeout"))
+                client_ip, client_port = client_addr
+
+                # Add and start thread
+                thread_id = f"_client_handler_{client_port}"
+                self.add_thread(
+                    thread_id=thread_id,
+                    target=self._handle_client,
+                    args=(client_sock,)
+                )
+                self.start(thread_id)
+
+            except socket.timeout:
+                pass
 
 
     def connect(

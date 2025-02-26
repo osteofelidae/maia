@@ -17,8 +17,8 @@ class PrinterModule(AsyncModule):
 
 class InputModule(AsyncModule):
 
-    def __init__(self, port: int, allowed_incoming_connections: list[str], id_to_port_map: dict[str: int]):
-        super().__init__(port, allowed_incoming_connections, id_to_port_map)
+    def __init__(self, port: int, module_id_to_port_map: dict[str: int]):
+        super().__init__(port, module_id_to_port_map)
 
         self.add_thread("input_action", self.input_action)
 
@@ -54,13 +54,11 @@ if __name__ == "__main__":
 
     p = PrinterModule(
         port=id_to_port_map.get("printer"),
-        allowed_incoming_connections=list(id_to_port_map.keys()),
-        id_to_port_map=id_to_port_map
+        module_id_to_port_map=id_to_port_map
     )
     i = InputModule(
         port=id_to_port_map.get("input"),
-        allowed_incoming_connections=list(id_to_port_map.keys()),
-        id_to_port_map=id_to_port_map
+        module_id_to_port_map=id_to_port_map
     )
 
     try:
@@ -69,7 +67,7 @@ if __name__ == "__main__":
 
         i.connect("printer").start()
 
-    except:
+    except KeyboardInterrupt:
 
         p.stop()
         i.stop()
