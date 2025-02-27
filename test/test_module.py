@@ -3,6 +3,7 @@ Test base module class.
 """
 
 from src.modules.module import AsyncModule
+from src.utils.config_utils import *
 
 class PrinterModule(AsyncModule):
 
@@ -17,10 +18,16 @@ class PrinterModule(AsyncModule):
 
 class InputModule(AsyncModule):
 
-    def __init__(self, port: int, module_id_to_port_map: dict[str: int]):
-        super().__init__(port, module_id_to_port_map)
+    def __init__(self, module_id_to_port_map: dict[str: int] = config.get("module_id_to_port_map")):
+        super().__init__("input", module_id_to_port_map)
 
         self.add_thread("input_action", self.input_action)
+
+    def process_instruction(
+            self,
+            instruction
+    ) -> None:
+        return
 
     def input_action(self):
 
@@ -53,19 +60,24 @@ if __name__ == "__main__":
     }
 
     p = PrinterModule(
-        port=id_to_port_map.get("printer"),
+        module_id="printer",
         module_id_to_port_map=id_to_port_map
     )
     i = InputModule(
-        port=id_to_port_map.get("input"),
         module_id_to_port_map=id_to_port_map
     )
 
-    try:
+    print(p)
+    print(i)
 
+    try:
+        i.connect("printer").start()
         p.start()
 
-        i.connect("printer").start()
+
+
+        print(p)
+        print(i)
 
     except KeyboardInterrupt:
 
