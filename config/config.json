@@ -1,7 +1,8 @@
 {
     "module_id_to_port_map": {
         "input_module": 9999,
-        "logger": 10000
+        "logger": 10000,
+        "extension_manager": 10001
     },
 
     "default_instruction_priority": 100,
@@ -12,5 +13,7 @@
     "loop_timeout": 0.5,
 
     "log_file_location": "$PROJECTDIR/logs/log",
-    "log_file_save_interval": 5
+    "log_file_save_interval": 5,
+
+    "extension_dir_path": "extensions"
 }

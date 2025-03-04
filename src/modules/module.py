@@ -3,7 +3,7 @@ Base module class.
 """
 
 # INTERNAL DEPENDENCIES
-from src.utils.config_utils import *
+from src.utils.config_utils import config
 
 # DEPENDENCIES
 from abc import ABC, abstractmethod
@@ -39,13 +39,13 @@ class AsyncModule(ABC):
 
         # Instance variables
         self._module_threads = {}  # Internal threads
-        self._module_id_to_port_map = module_id_to_port_map
-        self._module_id = module_id
-        self._port = module_id_to_port_map.get(module_id)
+        self._module_id_to_port_map = module_id_to_port_map  # Port numbers of each module
+        self._module_id = module_id  # Own module id
+        self._port = module_id_to_port_map.get(module_id)  # Own port
         self._connections = {}  # Outgoing sockets
         self._running = True  # Whether module is running
-        self._instruction_queue = PriorityQueue()
-        self._instruction_priorities = instruction_priorities
+        self._instruction_queue = PriorityQueue()  # Queue of instructions
+        self._instruction_priorities = instruction_priorities  # Priority of each instruction
 
         # Add threads
         self.add_thread(
@@ -56,8 +56,6 @@ class AsyncModule(ABC):
             "_incoming_connection_handler",
             self._handle_incoming_connections
         )
-
-
 
     def add_thread(
             self,
@@ -90,7 +88,6 @@ class AsyncModule(ABC):
 
         # Chaining
         return self
-
 
     def start(
             self,
@@ -172,6 +169,7 @@ class AsyncModule(ABC):
                 # Process instruction
                 self.process_instruction(instruction)
 
+            # Ignore empty
             except Empty:
                 pass
 
@@ -205,6 +203,7 @@ class AsyncModule(ABC):
                 except JSONDecodeError:
                     pass
 
+            # Ignore timeout
             except socket.timeout:
                 pass
 
@@ -240,6 +239,7 @@ class AsyncModule(ABC):
                 )
                 self.start(thread_id)
 
+            # Ignore timeout
             except socket.timeout:
                 pass
 
@@ -283,6 +283,7 @@ class AsyncModule(ABC):
         :return: None
         """
 
+        # Temp
         connected = False
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -300,8 +301,8 @@ class AsyncModule(ABC):
 
                 connected = True
 
+            # If timed out, sleep
             except ConnectionRefusedError:
-
                 time.sleep(config.get("loop_timeout"))
 
 
@@ -347,6 +348,7 @@ class AsyncModule(ABC):
             if not module_id in self._module_id_to_port_map.keys():
                 raise KeyError(f"Module with ID {module_id} not found in port map")
 
+            # Close socket
             self._connections.pop(module_id).close()
 
         # Disconnect all modules
@@ -369,8 +371,10 @@ class AsyncModule(ABC):
         :return:
         """
 
+        # Get current time
         current_time = datetime.now()
 
+        # Send formatted log
         self.send(
             "logger",
             {
@@ -385,11 +389,14 @@ class AsyncModule(ABC):
         To string method
         :return: str
         """
+
+        # Literally just return the string
         return f"""=== MODULE {self._module_id} ({'not ' if not self._running else ''}running) ===
+
 --- Threads ---:
 {'\n'.join([f'{thread_id} ({'not ' if not self._module_threads.get(thread_id).is_alive() else ''}running)' for thread_id in self._module_threads.keys()])}
 
 --- Outbound sockets ---:
 {'\n'.join([f'{socket_id}' for socket_id in self._connections.keys()])}
-======
+=== END ===\n\n\n
 """

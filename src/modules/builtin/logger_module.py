@@ -2,16 +2,14 @@
 Module to log to file
 """
 
-
 # INTERNAL DEPENDENCIES
-from src.modules.module import *
-from src.utils.config_utils import *
+from src.modules.module import AsyncModule
+from src.utils.config_utils import config
 
 # DEPENDENCIES
 from queue import PriorityQueue
 import time
 from datetime import datetime
-
 
 # LOGGER ASYNC MODULE CLASS
 class LoggerAsyncModule(AsyncModule):
@@ -21,25 +19,30 @@ class LoggerAsyncModule(AsyncModule):
 
     def __init__(
             self,
+            module_id = "logger",
             log_file_path: str = config.get("log_file_location"),
-            log_file_save_interval = config.get("log_file_save_interval")
+            log_file_save_interval = config.get("log_file_save_interval"),
+            **kwargs
     ):
         """
         Constructor
         :param log_file_path: path to log file
         :param log_file_save_interval: save interval
         """
+         # init super
+        super().__init__(module_id=module_id, **kwargs)
 
-        super().__init__(module_id="logger")
-
+        # Instance variables
         self._log_queue = PriorityQueue()  # Queue of log messages
         self._log_file_save_interval = log_file_save_interval
 
+        # Formulate project dir
         if "$PROJECTDIR" in log_file_path:
             self._log_file_path = path(log_file_path.replace("$PROJECTDIR/", ""))  # Log file path
         else:
             self._log_file_path = Path(log_file_path)
 
+        # Add save loop thread
         self.add_thread(
             thread_id="_save_log_loop",
             target=self._save_log_loop
@@ -78,6 +81,7 @@ class LoggerAsyncModule(AsyncModule):
         :return: None
         """
 
+        # If log instruction
         if instruction.get("instruction_type") == "log":
             priority = int(instruction.get("timestamp"))
             self._log_queue.put((priority, instruction.get("message")))
@@ -90,6 +94,7 @@ class LoggerAsyncModule(AsyncModule):
         :return: self
         """
 
+        # Get log string
         log_string = ""
         while not self._log_queue.empty():
             message = f"{self._log_queue.get_nowait()}\n"
@@ -99,6 +104,7 @@ class LoggerAsyncModule(AsyncModule):
         with open(self._log_file_path, "a") as file:
             file.write(log_string)
 
+        # Stop and return self
         return super().stop()
 
     def log(
@@ -106,5 +112,13 @@ class LoggerAsyncModule(AsyncModule):
             log_type,
             message
     ) -> None:
+        """
+        Override log function since it is stupid for logger to connect to itself
+        :param log_type: see overriden
+        :param message: see overridden
+        :return: see overriden
+        """
+
+        # Add to log queue
         current_time = datetime.now()
         self._log_queue.put((current_time.timestamp(), f"{current_time} - {self._module_id} - {log_type.upper()} - {message}"))
