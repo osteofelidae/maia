@@ -12,6 +12,7 @@ from src.utils.path_utils import path, Path
 import importlib
 import importlib.util
 import inspect
+import json
 
 # EXTENSION DECORATOR
 def extension(func):
@@ -28,9 +29,25 @@ def extension(func):
 def _parse_docstring(
         func
 ):
-    # TODO docstring
+    """
+    Parse docstring of a function
+    :param func: function
+    :return: docstring attributes as dict
+    """
 
-    # Get lines
+    # Get function signature
+    sig = inspect.signature(func)
+
+    # Required params
+    required_params = [
+        name for name, param in sig.parameters.items()
+        if param.default == inspect.Parameter.empty
+    ]
+
+    # Param types
+    param_types = {name: param.annotation for name, param in sig.parameters.items()}
+
+    # Get docstring lines
     docstring_lines = inspect.getdoc(func).split("\n")
 
     # Description
@@ -42,8 +59,13 @@ def _parse_docstring(
     params = {}
     for param_line in param_lines:
         items = param_line.split(":")
+        name = items[1][5:].strip()
         params.update({
-            items[1][5:].strip(): items[2].strip()
+            name: {
+                "type": param_types.get(name),
+                "description": items[2].strip(),
+                "required": name in required_params
+            }
         })
 
     # Return value
@@ -61,7 +83,12 @@ class ExtensionManagerAsyncModule(AsyncModule, ABC):
             extension_dir_path: str = config.get("extension_dir_path"),
             **kwargs
     ):
-        # TODO docstring
+        """
+        Constructor
+        :param module_id: provided
+        :param extension_dir_path: directory where extension files are located; provided
+        :param kwargs: kwargs to module
+        """
 
         # Instance variables
         self._extension_functions = {}  # Extension functions
@@ -122,26 +149,47 @@ class ExtensionManagerAsyncModule(AsyncModule, ABC):
         return self
 
     def get_extension_descriptions(self):
-        # TODO docstring
+        """
+        Get function descriptions as str (for system prompt)
+        :return: function descriptions
+        """
 
-        result_str = ""
+        # List of funcs
+        func_strings = []
 
-        # Add each line
-        for name in self._extension_functions.keys():
+        # For each func
+        for func_name in self._extension_functions.keys():
 
-            entry = self._extension_functions.get(name)
+            # Get func entry
+            func_entry = self._extension_functions.get(func_name)
 
-            result_str += f"* {name}: {entry.get('description')}\n"
+            # Assemble dictionary
+            func_dict = {
+                "name": func_name,
+                "description": func_entry.get("description"),
+                "parameters": {
+                    parameter_name: {
+                        "type": parameter_entry.get("type").__name__,
+                        "description": parameter_entry.get("description"),
+                        "required": "true" if parameter_entry.get("required") else "false"
+                    }
+                    for parameter_name, parameter_entry in func_entry.get("parameters").items()
+                }
+            }
 
-            result_str += "\t* Parameters:\n"
-            parameters = entry.get('parameters')
-            for parameter in parameters.keys():
+            # Dump to string
+            func_string = json.dumps(func_dict, indent=4)
+            func_strings.append(func_string)
 
-                result_str += f"\t\t{parameter}: {parameters.get(parameter)}\n"
+        return ",\n".join(func_strings)
 
-            result_str += f"\t* Return value: {entry.get('return_value')}\n"
+    def function_call(
+            self,
+            func_name,
+            kwargs
+    ):
+        return  # TODO
 
-        return result_str
 
     def process_instruction(
             self,
