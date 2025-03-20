@@ -35,12 +35,19 @@ class LoggerModuleTestInputModule(InputModule, ABC):
             else:
                 print("send", instruction)
                 self.log(
+                    "test",
                     instruction
                 )
 
+m, t = None, None
 
-m = LoggerAsyncModule().start()
-t = LoggerModuleTestInputModule(target="logger").start()
+mm = {
+    "logger": m,
+    "input": t
+}
+
+m = LoggerAsyncModule().update_module_map(mm).start()
+t = LoggerModuleTestInputModule(target="logger").update_module_map(mm).start()
 
 
 print(m)

@@ -18,8 +18,9 @@ class PrinterModule(AsyncModule):
 
 class InputModule(AsyncModule):
 
-    def __init__(self, module_id_to_port_map: dict[str: int] = config.get("module_id_to_port_map")):
-        super().__init__("input", module_id_to_port_map)
+    def __init__(self, module_id: str):
+
+        super().__init__(module_id)
 
         self.add_thread("input_action", self.input_action)
 
@@ -54,24 +55,28 @@ class InputModule(AsyncModule):
 
 if __name__ == "__main__":
 
-    id_to_port_map = {
-        "printer": 3010,
-        "input": 3011
-    }
+
 
     p = PrinterModule(
-        module_id="printer",
-        module_id_to_port_map=id_to_port_map
+        module_id="printer"
     )
     i = InputModule(
-        module_id_to_port_map=id_to_port_map
+        module_id="input"
     )
+
+    mm = {
+        "printer": p,
+        "input": i
+    }
+
+    p.update_module_map(mm)
+    i.update_module_map(mm)
 
     print(p)
     print(i)
 
     try:
-        i.connect("printer").start()
+        i.start()
         p.start()
 
 

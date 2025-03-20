@@ -13,12 +13,11 @@ from abc import abstractmethod
 # INPUT MODULE CLASS
 class InputModule(AsyncModule):
 
-    def __init__(self, target, module_id_to_port_map: dict[str: int] = config.get("module_id_to_port_map")):
-        super().__init__("input_module", module_id_to_port_map)
+    def __init__(self, target, **kwargs):
+        super().__init__("input_module", **kwargs)
 
         self.add_thread("input_action", self._input_action)
         self._target = target
-        self.connect(self._target)
 
     @abstractmethod
     def get_input(self) -> dict | str | None:
