@@ -1,10 +1,4 @@
 {
-    "module_id_to_port_map": {
-        "input_module": 9999,
-        "logger": 10000,
-        "extension_manager": 10001
-    },
-
     "default_instruction_priority": 100,
     "instruction_priorities": {
 

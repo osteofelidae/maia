@@ -7,13 +7,10 @@ from src.utils.config_utils import config
 
 # DEPENDENCIES
 from abc import ABC, abstractmethod
-import socket
 import threading
 from queue import PriorityQueue, Empty
-import json
-import time
-from json import JSONDecodeError
 from datetime import datetime
+from typing import Self
 
 # CONSTANTS
 LOCALHOST = "127.0.0.1"
@@ -27,22 +24,20 @@ class AsyncModule(ABC):
     def __init__(
             self,
             module_id: str,
-            module_id_to_port_map: dict[str: int] = config.get("module_id_to_port_map"),
+            module_map: dict[str: object] = None,
             instruction_priorities: dict[str: int] = config.get("instruction_priorities")
     ):
         """
         Constructor
         :param module_id: own module id
-        :param module_id_to_port_map: map of module IDs to localhost ports
+        :param module_map: map of module objects
         :param instruction_priorities: map of instruction names to priorities
         """
 
         # Instance variables
         self._module_threads = {}  # Internal threads
-        self._module_id_to_port_map = module_id_to_port_map  # Port numbers of each module
         self._module_id = module_id  # Own module id
-        self._port = module_id_to_port_map.get(module_id)  # Own port
-        self._connections = {}  # Outgoing sockets
+        self._module_map = module_map if module_map else {}
         self._running = True  # Whether module is running
         self._instruction_queue = PriorityQueue()  # Queue of instructions
         self._instruction_priorities = instruction_priorities  # Priority of each instruction
@@ -52,17 +47,13 @@ class AsyncModule(ABC):
             "_instruction_handler",
             self._handle_instructions
         )
-        self.add_thread(
-            "_incoming_connection_handler",
-            self._handle_incoming_connections
-        )
 
     def add_thread(
             self,
             thread_id: str,
             target,
             args: tuple = ()
-    ) -> object:
+    ) -> Self:
         """
         Add a thread
         :param thread_id: thread id
@@ -92,7 +83,7 @@ class AsyncModule(ABC):
     def start(
             self,
             thread_id: str = None
-    ) -> object:
+    ) -> Self:
         """
         Start specific thread, or all threads
         :param thread_id: id of thread; None if start all threads
@@ -114,9 +105,25 @@ class AsyncModule(ABC):
         # Chaining
         return self
 
+    def update_module_map(
+            self,
+            update_dict: dict
+    ) -> Self:
+        """
+        Update module map
+        :param update_dict: dict to update with
+        :return: self
+        """
+
+        # Update module map
+        self._module_map.update(update_dict)
+
+        # Chaining
+        return self
+
     def stop(
             self
-    ) -> object:
+    ) -> Self:
         """
         Stop all threads
         :return: self
@@ -124,9 +131,6 @@ class AsyncModule(ABC):
 
         # Stop
         self._running = False
-
-        # Disconnect all
-        self.disconnect()
 
         # Wait for all threads to end
         for module_id, module_thread in self._module_threads.items():
@@ -173,144 +177,38 @@ class AsyncModule(ABC):
             except Empty:
                 pass
 
-
-    def _handle_client(
+    def instruct(
             self,
-            client_sock
-    ) -> None:
+            instruction: dict
+    ) -> Self:
         """
-        Handle client module (incoming connection)
-        :param client_sock: client socket
-        :return: None
-        """
-
-        # While running
-        while self._running:
-
-            try:
-                # Get message
-                try:
-                    message = json.loads(client_sock.recv(4096).decode())
-
-                    # Get priority
-                    if message.get("instruction_type") in self._instruction_priorities.keys():
-                        priority = self._instruction_priorities.get(message.get("instruction_type"))
-                    else:
-                        priority = config.get("default_instruction_priority")
-
-                    # Add to queue
-                    self._instruction_queue.put((priority, message))
-                except JSONDecodeError:
-                    pass
-
-            # Ignore timeout
-            except socket.timeout:
-                pass
-
-
-    def _handle_incoming_connections(self) -> None:
-        """
-        Receive connections from authorized modules
-        :return: None
-        """
-
-        # Instantiate server obj
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.settimeout(config.get("loop_timeout"))
-        server.bind((LOCALHOST, self._port))
-        server.listen()
-
-        # Receive connections while running
-        while self._running:
-
-            try:
-
-                # Accept connection
-                client_sock, client_addr = server.accept()
-                client_sock.settimeout(config.get("loop_timeout"))
-                client_ip, client_port = client_addr
-
-                # Add and start thread
-                thread_id = f"_client_handler_{client_port}"
-                self.add_thread(
-                    thread_id=thread_id,
-                    target=self._handle_client,
-                    args=(client_sock,)
-                )
-                self.start(thread_id)
-
-            # Ignore timeout
-            except socket.timeout:
-                pass
-
-
-    def connect(
-            self,
-            module_id: str
-    ) -> object:
-        """
-        Connect to other module
-        :param module_id: other module ID
+        Called externally to instruct this module
+        :param instruction: instruction
         :return: self
         """
 
-        # If module id provided
-        if module_id:
+        # If not running, exception
+        if not self._running:
+            raise RuntimeError(f"Module '{self._module_id}' not running")
 
-            # If invalid module id, exception
-            if not module_id in self._module_id_to_port_map.keys():
-                raise KeyError(f"Module with ID {module_id} not found in port map")
+        # Get priority
+        if instruction.get("instruction_type") in self._instruction_priorities.keys():
+            priority = self._instruction_priorities.get(instruction.get("instruction_type"))
+        else:
+            priority = config.get("default_instruction_priority")
 
-        # Start connection attempt loop
-        thread_id = f"_connection_attempt_loop_{module_id}"
-        self.add_thread(
-            thread_id,
-            self._connection_attempt_loop,
-            (module_id,)
-        )
-        self.start(thread_id)
+        # Add to queue
+        self._instruction_queue.put((priority, instruction))
 
         # Chaining
         return self
-
-    def _connection_attempt_loop(
-            self,
-            module_id
-    ):
-        """
-        Attempt to connect to a module until connected
-        :param module_id: other module id
-        :return: None
-        """
-
-        # Temp
-        connected = False
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        # Attempt to connect until connected
-        while not connected and self._running:
-
-            try:
-                # Connect
-                client.connect((LOCALHOST, self._module_id_to_port_map.get(module_id)))
-
-                # Store
-                self._connections.update({
-                    module_id: client
-                })
-
-                connected = True
-
-            # If timed out, sleep
-            except ConnectionRefusedError:
-                time.sleep(config.get("loop_timeout"))
 
 
     def send(
             self,
             module_id: str,
             instruction: dict
-    ) -> object:
+    ) -> Self:
         """
         Send message to other module
         :param module_id: id of module to send to
@@ -318,43 +216,16 @@ class AsyncModule(ABC):
         :return: self
         """
 
-        # Change to string
-        str_instruction = json.dumps(instruction)
+        # Get module object
+        module = self._module_map.get(module_id)
 
-        # If invalid module id, exception
-        if not module_id in self._module_id_to_port_map.keys():
-            raise KeyError(f"Module with ID {module_id} not found in port map")
+        # Send if found
+        if module:
+            module.instruct(instruction)
 
-        # Send
-        self._connections.get(module_id).sendall(str_instruction.encode())
-
-        # Chaining
-        return self
-
-    def disconnect(
-            self,
-            module_id: str = None
-    ) -> object:
-        """
-        Disconnect from module, or all modules
-        :param module_id: other module id
-        :return: self
-        """
-
-        # Disconnect specific module
-        if module_id:
-
-            # If invalid module id, exception
-            if not module_id in self._module_id_to_port_map.keys():
-                raise KeyError(f"Module with ID {module_id} not found in port map")
-
-            # Close socket
-            self._connections.pop(module_id).close()
-
-        # Disconnect all modules
+        # Exception if not found
         else:
-            for module_id, sock in self._connections.items():
-                sock.close()
+            raise KeyError(f"Module '{module_id}' not found")
 
         # Chaining
         return self
@@ -396,7 +267,7 @@ class AsyncModule(ABC):
 --- Threads ---:
 {'\n'.join([f'{thread_id} ({'not ' if not self._module_threads.get(thread_id).is_alive() else ''}running)' for thread_id in self._module_threads.keys()])}
 
---- Outbound sockets ---:
-{'\n'.join([f'{socket_id}' for socket_id in self._connections.keys()])}
+--- Registered modules ---:
+{'\n'.join([f'{module_id}' for module_id in self._module_map.keys()])}
 === END ===\n\n\n
 """

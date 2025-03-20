@@ -86,6 +86,8 @@ class LoggerAsyncModule(AsyncModule):
         if instruction.get("instruction_type") == "log":
             priority = int(instruction.get("timestamp"))
             self._log_queue.put((priority, instruction.get("message")))
+            print(instruction.get("message"))
+
 
     def stop(
             self
