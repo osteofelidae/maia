@@ -133,7 +133,7 @@ class ExtensionManagerAsyncModule(AsyncModule, ABC):
 
             # Check whether function already exists
             if name in self._extension_functions.keys():
-                pass  # TODO exception
+                raise KeyError(f"Function '{name}' already registered")
 
             # Add entry
             self._extension_functions.update({
@@ -188,11 +188,43 @@ class ExtensionManagerAsyncModule(AsyncModule, ABC):
             func_name,
             kwargs
     ):
-        return  # TODO
+        """
+        Do function call
+        :param func_name: function name
+        :param kwargs: kwargs for function call (as dict)
+        :return: Function result
+        """
+
+        # Get target function
+        target = self._extension_functions.get(func_name)
+
+        # Call function if found
+        if target:
+            return target(**kwargs)
+
+        # Exception if not found
+        else:
+            raise KeyError(f"Function '{func_name} not found")
 
 
     def process_instruction(
             self,
             instruction
     ) -> None:
-        return  # TODO
+        """
+        Overloaded - process single instruction
+        :param instruction: provided
+        :return: None
+        """
+
+        # Function call instruction
+        if instruction.get("instruction_type") == "function_call":
+
+            # Parse to json
+            parsed = json.loads(instruction.get("message"))
+
+            # Do function call
+            self.function_call(
+                func_name=parsed.get("function_name"),
+                kwargs=parsed.get("arguments")
+            )

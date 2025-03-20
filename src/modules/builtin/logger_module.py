@@ -5,6 +5,7 @@ Module to log to file
 # INTERNAL DEPENDENCIES
 from src.modules.module import AsyncModule
 from src.utils.config_utils import config
+from src.utils.path_utils import path, Path
 
 # DEPENDENCIES
 from queue import PriorityQueue
