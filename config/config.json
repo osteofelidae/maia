@@ -9,5 +9,9 @@
     "log_file_location": "$PROJECTDIR/logs/log",
     "log_file_save_interval": 5,
 
-    "extension_dir_path": "extensions"
+    "extension_dir_path": "extensions",
+
+    "llm_path": "$PROJECTDIR/models/deepseek-llm-7b-chat",
+    "llm_max_new_tokens": 100,
+    "llm_add_generated_messages": true
 }

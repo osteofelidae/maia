@@ -48,7 +48,7 @@ def _parse_docstring(
     param_types = {name: param.annotation for name, param in sig.parameters.items()}
 
     # Get docstring lines
-    docstring_lines = inspect.getdoc(func).split("\n")
+    docstring_lines = str(inspect.getdoc(func)).split("\n")
 
     # Description
     description_lines = [line.strip() for line in docstring_lines if not line.strip().startswith(":")]
