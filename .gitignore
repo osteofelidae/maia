@@ -1,3 +1,7 @@
+!models/maia-llm/train.py
+
 logs/*
-models/*
+*.bin
+*.safetensors
 data/*
+

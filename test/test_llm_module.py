@@ -13,5 +13,5 @@ if __name__ == "__main__":
             "role": "user",
             "content": inp
         })
-        time.sleep(0.5)
+        time.sleep(0.1)
         print(l.generate())

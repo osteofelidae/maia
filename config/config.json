@@ -11,7 +11,10 @@
 
     "extension_dir_path": "extensions",
 
-    "llm_path": "$PROJECTDIR/models/deepseek-llm-7b-chat",
-    "llm_max_new_tokens": 100,
-    "llm_add_generated_messages": true
+    "llm_path": "$PROJECTDIR/models/llama-3.2-1b-instruct",
+    "llm_max_new_tokens": 500,
+    "llm_add_generated_messages": true,
+    "llm_message_history_length": 10,
+    "llm_rag_length":5,
+    "llm_hyde_length": 5
 }
