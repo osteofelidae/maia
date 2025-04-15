@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 import threading
 from queue import PriorityQueue, Empty
 from datetime import datetime
-from typing import Self
+
 
 # CONSTANTS
 LOCALHOST = "127.0.0.1"
@@ -53,7 +53,7 @@ class AsyncModule(ABC):
             thread_id: str,
             target,
             args: tuple = ()
-    ) -> Self:
+    ):
         """
         Add a thread
         :param thread_id: thread id
@@ -83,7 +83,7 @@ class AsyncModule(ABC):
     def start(
             self,
             thread_id: str = None
-    ) -> Self:
+    ):
         """
         Start specific thread, or all threads
         :param thread_id: id of thread; None if start all threads
@@ -108,7 +108,7 @@ class AsyncModule(ABC):
     def update_module_map(
             self,
             update_dict: dict
-    ) -> Self:
+    ):
         """
         Update module map
         :param update_dict: dict to update with
@@ -123,7 +123,7 @@ class AsyncModule(ABC):
 
     def stop(
             self
-    ) -> Self:
+    ):
         """
         Stop all threads
         :return: self
@@ -180,7 +180,7 @@ class AsyncModule(ABC):
     def instruct(
             self,
             instruction: dict
-    ) -> Self:
+    ):
         """
         Called externally to instruct this module
         :param instruction: instruction
@@ -208,7 +208,7 @@ class AsyncModule(ABC):
             self,
             module_id: str,
             instruction: dict
-    ) -> Self:
+    ):
         """
         Send message to other module
         :param module_id: id of module to send to
@@ -254,20 +254,3 @@ class AsyncModule(ABC):
                 "timestamp": str(int(current_time.timestamp()))
             }
         )
-
-    def __str__(self):
-        """
-        To string method
-        :return: str
-        """
-
-        # Literally just return the string
-        return f"""=== MODULE {self._module_id} ({'not ' if not self._running else ''}running) ===
-
---- Threads ---:
-{'\n'.join([f'{thread_id} ({'not ' if not self._module_threads.get(thread_id).is_alive() else ''}running)' for thread_id in self._module_threads.keys()])}
-
---- Registered modules ---:
-{'\n'.join([f'{module_id}' for module_id in self._module_map.keys()])}
-=== END ===\n\n\n
-"""

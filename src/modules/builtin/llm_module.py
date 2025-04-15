@@ -9,9 +9,13 @@ LLM module
 from src.modules.module import AsyncModule
 from src.utils.config_utils import *
 from src.utils.path_utils import path, Path
+
+
+# DEPENDENCIES
 from abc import ABC
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from unsloth import FastLanguageModel
+import os
 
 
 # FUNCTIONS
@@ -40,6 +44,7 @@ class LLMAsyncModule(AsyncModule, ABC):
             message_history_length: int = config.get("llm_message_history_length"),
             rag_length: int = config.get("llm_rag_length"),
             hyde_length: int = config.get("llm_hyde_length"),
+            function_call_function = None,
             **kwargs
     ):
         # TODO docstring
@@ -54,16 +59,28 @@ class LLMAsyncModule(AsyncModule, ABC):
         self.message_history_length = message_history_length
         self.rag_length = rag_length
         self.hyde_length = hyde_length
+        self.function_call_function = function_call_function
 
         # Initialize message history & backlog
         self.message_history = []
         self.message_history_backlog = []
+        self.system_message = ""
 
         # Init
         super().__init__(
             module_id,
             **kwargs
         )
+
+    def set_system_message(
+            self,
+            system_message
+    ):
+        # TODO docstring
+
+        self.system_message = system_message
+
+
 
     def add_message(
             self,
@@ -110,14 +127,18 @@ class LLMAsyncModule(AsyncModule, ABC):
     ):
         # TODO docstring
 
+        # Set env for unsloth
+        os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
         # Model, tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+            model_name=str(self.model_path),
+            #max_seq_length=max_seq_length,
+            dtype=None,
+            load_in_4bit=True
         )
+
+        FastLanguageModel.for_inference(self.model)
 
     def _get_embedding(
             self,
@@ -227,12 +248,55 @@ class LLMAsyncModule(AsyncModule, ABC):
             rag_hyde_messages = [self.message_history_backlog[i] for i in all_indices]
             temp_message_history = rag_hyde_messages + self.message_history
 
+        # Add system message if set
+        if self.system_message:
+            temp_message_history = [{
+                "role": "system",
+                "content": self.system_message
+            }] + temp_message_history
+
 
         # Generate
         response_message = self._generate(
             temp_message_history,
             **kwargs
         )
+
+        # Functioncall
+        if response_message.startswith("function call: "):
+
+            # Functioncall if able
+            if self.function_call_function:
+
+                print("functioncall")
+
+                print(response_message)
+
+                # Data
+                function_call_data = json.loads(response_message.removeprefix("function call: ").strip())  # TODO error handling
+
+                # Do function call
+                function_response = self.function_call_function(
+                    function_call_data.get("name", "default_function"),
+                    function_call_data.get("arguments", {})
+                )
+
+                # Add to temporary message history
+                temp_message_history.append({
+                    "role": "system",
+                    "content": str(function_response)
+                })
+
+                # Regenerate
+                response_message = self._generate(
+                    temp_message_history,
+                    **kwargs
+                )
+
+            # Else, error
+            else:
+                pass  # TODO error
+
 
         # Add to history if set
         if add_message:

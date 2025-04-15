@@ -11,7 +11,7 @@
 
     "extension_dir_path": "extensions",
 
-    "llm_path": "$PROJECTDIR/models/llama-3.2-1b-instruct",
+    "llm_path": "$PROJECTDIR/models/maia-llm",
     "llm_max_new_tokens": 500,
     "llm_add_generated_messages": true,
     "llm_message_history_length": 10,
