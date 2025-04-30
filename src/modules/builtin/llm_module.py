@@ -284,7 +284,7 @@ class LLMAsyncModule(AsyncModule, ABC):
                 # Add to temporary message history
                 temp_message_history.append({
                     "role": "system",
-                    "content": str(function_response)
+                    "content": "function response: " + str(function_response)
                 })
 
                 # Regenerate

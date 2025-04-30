@@ -1,8 +1,9 @@
 from src.modules.builtin.llm_module import LLMAsyncModule
 import time
+from src.utils.path_utils import path, Path
 if __name__ == "__main__":
 
-    l = LLMAsyncModule()
+    l = LLMAsyncModule(model_path=str(path("models/llama-3.2-3b-instruct")))
     l.set_system_message("You are a helpful assistant with access to the following function(s), which you may use if required:\n{\n    \"name\": \"get_exchange_rate\",\n    \"description\": \"Get the exchange rate between two currencies\",\n    \"parameters\": {\n        \"base_currency\": {\n            \"type\": \"string\",\n            \"description\": \"The currency to convert from\",\n            \"required\": \"true\"\n        },\n        \"target_currency\": {\n            \"type\": \"string\",\n            \"description\": \"The currency to convert to\",\n            \"required\": \"true\"\n        }\n    }\n}")
     l._load_model()
     l.start()

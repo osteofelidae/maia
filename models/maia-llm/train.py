@@ -6,7 +6,7 @@ Train LLM
 # CONSTANTS
 BASE_MODEL_PATH = "models/llama-3.2-1b-instruct"
 DATASETS = [
-    "data/glaive_function_calling"
+    "data/glaive_function_calling/augmented"
 ]
 OUTPUT_DIR = "models/maia-llm"
 
@@ -54,10 +54,10 @@ if __name__ == "__main__":
     )
 
     # Load datasets
-    dataset_paths = [path(raw_path)/"data" for raw_path in DATASETS]
+    dataset_paths = [path(raw_path) for raw_path in DATASETS]
     datasets = [load_from_disk(str(dataset_path)) for dataset_path in dataset_paths]
     dataset = concatenate_datasets(datasets, axis=1)
-    dataset = Dataset.from_dict(dataset[:1000])
+    #dataset = Dataset.from_dict(dataset)
 
     # Format dataset
     def format_as_prompt(examples):
@@ -91,7 +91,7 @@ if __name__ == "__main__":
             per_device_train_batch_size=4,
             gradient_accumulation_steps=4,
             warmup_steps=5,
-            max_steps=750,
+            max_steps=2500,
             learning_rate=2e-4,
             fp16=not unsloth.is_bfloat16_supported(),
             bf16=unsloth.is_bfloat16_supported(),

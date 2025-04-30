@@ -8,8 +8,10 @@ if __name__ == "__main__":
 
     funcs = e.get_extension_descriptions()
 
+    print(funcs)
+
     l = LLMAsyncModule(function_call_function=e.function_call)
-    l.set_system_message("You are a helpful assistant with access to the following function(s), which you may use if required:\n" + funcs)
+    l.set_system_message("You are a helpful assistant with access to the following function(s), which you must use if required:\n" + funcs)
     l._load_model()
     l.start()
 

@@ -200,7 +200,7 @@ class ExtensionManagerAsyncModule(AsyncModule, ABC):
 
         # Call function if found
         if target:
-            return target(**kwargs)
+            return target.get("function")(**kwargs)
 
         # Exception if not found
         else:
