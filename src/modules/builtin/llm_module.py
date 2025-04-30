@@ -1,9 +1,6 @@
 """
 Module to manage LLM
 """
-"""
-LLM module
-"""
 
 # INTERNAL DEPENDENCIES
 from src.modules.module import AsyncModule
@@ -224,7 +221,7 @@ class LLMAsyncModule(AsyncModule, ABC):
             target = self._get_embedding(self.message_history[-1]["content"]).to("cpu")
             for message in self.message_history_backlog:
                 rag_scores.append(compare_embeddings(target, message.get("embedding")))
-            rag_score_indices = sorted(sorted(range(len(rag_scores)), key=lambda i: rag_scores[i], reverse=True)[:self.rag_length])
+            rag_score_indices = sorted(sorted(range(len(rag_scores)), key=lambda j: rag_scores[j], reverse=True)[:self.rag_length])
 
             # Add messages
             rag_messages = [self.message_history_backlog[i] for i in rag_score_indices]
@@ -239,7 +236,7 @@ class LLMAsyncModule(AsyncModule, ABC):
             target = self._get_embedding(hyde_response).to("cpu")
             for message in self.message_history_backlog:
                 hyde_scores.append(compare_embeddings(target, message.get("embedding")))
-            hyde_score_indices = sorted(range(len(rag_scores)), key=lambda i: hyde_scores[i], reverse=True)[:self.rag_length]
+            hyde_score_indices = sorted(range(len(rag_scores)), key=lambda j: hyde_scores[j], reverse=True)[:self.rag_length]
 
             # Join max indices
             all_indices = sorted(list(set(rag_score_indices+hyde_score_indices)))

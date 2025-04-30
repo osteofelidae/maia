@@ -12,9 +12,6 @@ from queue import PriorityQueue, Empty
 from datetime import datetime
 
 
-# CONSTANTS
-LOCALHOST = "127.0.0.1"
-
 # ASYNC MODULE CLASS
 class AsyncModule(ABC):
     """
