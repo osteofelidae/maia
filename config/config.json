@@ -16,5 +16,7 @@
     "llm_add_generated_messages": true,
     "llm_message_history_length": 10,
     "llm_rag_length":5,
-    "llm_hyde_length": 5
+    "llm_hyde_length": 5,
+
+    "asr_path": "$PROJECTDIR/models/whisper-tiny"
 }

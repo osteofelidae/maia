@@ -120,3 +120,5 @@ yarl==1.19.0
 zipp==3.21.0
 
 unsloth~=2025.3.19
+sounddevice~=0.5.1
+scipy~=1.13.1

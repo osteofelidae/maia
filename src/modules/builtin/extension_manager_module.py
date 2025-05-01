@@ -4,7 +4,6 @@ Module to manage extensions (function calling)
 
 # INTERNAL DEPENDENCIES
 from src.modules.module import AsyncModule
-from abc import ABC
 from src.utils.config_utils import config
 from src.utils.path_utils import path, Path
 
@@ -75,7 +74,7 @@ def _parse_docstring(
     return [description, params, return_val]
 
 # EXTENSION MANAGER MODULE
-class ExtensionManagerAsyncModule(AsyncModule, ABC):
+class ExtensionManagerAsyncModule(AsyncModule):
 
     def __init__(
             self,

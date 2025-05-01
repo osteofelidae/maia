@@ -9,7 +9,6 @@ from src.utils.path_utils import path, Path
 
 
 # DEPENDENCIES
-from abc import ABC
 import torch
 from unsloth import FastLanguageModel
 import os
@@ -32,7 +31,7 @@ def compare_embeddings(
 
 
 # LLM MODULE
-class LLMAsyncModule(AsyncModule, ABC):
+class LLMAsyncModule(AsyncModule):
 
     def __init__(
             self,
@@ -44,7 +43,16 @@ class LLMAsyncModule(AsyncModule, ABC):
             function_call_function = None,
             **kwargs
     ):
-        # TODO docstring
+        """
+
+        :param module_id: it's in the name.
+        :param model_path: path to model
+        :param message_history_length: max length of message history before punting to archive
+        :param rag_length: number of messages retrieved for RAG
+        :param hyde_length: ditto for HyDE
+        :param function_call_function: function to call on functioncall
+        :param kwargs: kwargs
+        """
 
         # Formulate project dir
         if "$PROJECTDIR" in model_path:
@@ -63,6 +71,9 @@ class LLMAsyncModule(AsyncModule, ABC):
         self.message_history_backlog = []
         self.system_message = ""
 
+        # Load model
+        self._load_model(self.model_path)
+
         # Init
         super().__init__(
             module_id,
@@ -73,10 +84,15 @@ class LLMAsyncModule(AsyncModule, ABC):
             self,
             system_message
     ):
-        # TODO docstring
+        """
+        Set system message
+        :param system_message: what do you think
+        :return: self
+        """
 
         self.system_message = system_message
 
+        return self
 
 
     def add_message(
@@ -84,7 +100,12 @@ class LLMAsyncModule(AsyncModule, ABC):
             role: str = "user",
             content: str = ""
     ):
-        # TODO docstring
+        """
+        Add message to history
+        :param role: role (user|system|assistant)
+        :param content: message content
+        :return: self
+        """
         # Formulate input
         message = {
             "role": role,
@@ -98,6 +119,8 @@ class LLMAsyncModule(AsyncModule, ABC):
         self.message_history_backlog += self.message_history[:-self.message_history_length]
         self.message_history = self.message_history[-self.message_history_length:]
 
+        return self
+
 
     def process_instruction(
             self,
@@ -105,8 +128,8 @@ class LLMAsyncModule(AsyncModule, ABC):
     ) -> None:
         """
         Process single instruction
-        :param instruction:
-        :return:
+        :param instruction: instruction dict
+        :return: None
         """
 
         # Add message
@@ -120,16 +143,20 @@ class LLMAsyncModule(AsyncModule, ABC):
 
 
     def _load_model(
-            self
+            self,
+            model_path
     ):
-        # TODO docstring
+        """
+        Load model
+        :return:
+        """
 
         # Set env for unsloth
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
         # Model, tokenizer
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=str(self.model_path),
+            model_name=str(model_path),
             #max_seq_length=max_seq_length,
             dtype=None,
             load_in_4bit=True
@@ -163,6 +190,12 @@ class LLMAsyncModule(AsyncModule, ABC):
             message_history: list,
             max_new_tokens: int = config.get("llm_max_new_tokens"),
     ):
+        """
+        Generate with no frills
+        :param message_history: message history list of dicts
+        :param max_new_tokens: max new tokens
+        :return: response str
+        """
 
         # Tokenize input
         input_tokens = self.tokenizer.apply_chat_template(
@@ -199,7 +232,12 @@ class LLMAsyncModule(AsyncModule, ABC):
             add_message: bool = config.get("llm_add_generated_messages"),
             **kwargs
     ):
-        # TODO docstring
+        """
+        Generate with bells and whistles
+        :param add_message: whether to add message to history
+        :param kwargs: kwargs
+        :return: response
+        """
 
         # Message history
         temp_message_history = self.message_history
@@ -278,6 +316,8 @@ class LLMAsyncModule(AsyncModule, ABC):
                     function_call_data.get("arguments", {})
                 )
 
+                print(f"function response: {function_response}")
+
                 # Add to temporary message history
                 temp_message_history.append({
                     "role": "system",
@@ -309,3 +349,4 @@ class LLMAsyncModule(AsyncModule, ABC):
 
     # TODO:
     # * Dump message history, on command and automatically
+    # * generate at intervals
