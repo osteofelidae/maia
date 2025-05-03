@@ -1,6 +1,6 @@
 # MAIA
 **THIS IS CURRENTLY A WORK IN PROGRESS**\
-MAIA stands for Modular AI Assistant. It features a full, upgradeable API, pretrained LLM (coming soon), and a 
+MAIA stands for Modular AI Assistant. It features a full, upgradeable API, pretrained LLM (coming soon), RAG/HyDE, and a 
 user-friendly extension system for adding callable functions. See below for details.
 
 ## Configuration
