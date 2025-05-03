@@ -3,7 +3,7 @@ from src.modules.builtin.extension_manager_module import extension
 @extension
 def add_two(a: int, b: int):
     """
-    Adds two numbers
+    Adds two numbers.
     :param a: int value 1
     :param b: int value 2
     :return: int result
@@ -14,7 +14,7 @@ def add_two(a: int, b: int):
 @extension
 def sub_two(a: int, b: int):
     """
-    Subtract b from a
+    Subtracts two numbers. Subtracts b from a.
     :param a: int value 1
     :param b: int value 2
     :return: int result

@@ -47,11 +47,13 @@ if __name__ == "__main__":
 
     orig_dataset = load_from_disk(path("data/glaive_function_calling/data"))
 
+    print(orig_dataset)
+
     orig_dataset = orig_dataset.map(strip_system_message, batched=False)
 
     augmented_datasets = []
 
-    for i in range(1, 4):
+    for i in range(1, 3):
         augmented_datasets.append(orig_dataset.map(combine_examples, batched=True, batch_size=i))
 
     dataset = concatenate_datasets(augmented_datasets)

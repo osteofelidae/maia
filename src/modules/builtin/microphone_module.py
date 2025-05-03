@@ -25,6 +25,7 @@ class MicrophoneAsyncModule(AsyncModule):
         # TODO docstring
 
         self._is_recording = False  # Is recording flag
+        self.frames = []
 
         super().__init__(module_id)
 
@@ -37,9 +38,10 @@ class MicrophoneAsyncModule(AsyncModule):
         else:
             return  # TODO exception or something
 
-        frames = []
         def append_callback(data_in, frames_in, time, status):
-            frames.append(data_in.copy())
+
+            # Add frames
+            self.frames.append(data_in.copy())
 
         with sd.InputStream(
                 samplerate=16000,  # TODO change to params/config
@@ -50,10 +52,10 @@ class MicrophoneAsyncModule(AsyncModule):
 
             # Record until stopped
             while self._is_recording:
-                sd.sleep(100)  # TODO change to params/config
+                sd.sleep(500)  # TODO change to params/config
 
         # Combine and record audio
-        audio = np.concatenate(frames, axis=0)
+        audio = np.concatenate(self.frames, axis=0)
 
         # TODO maybe convert to wav?
 
@@ -64,4 +66,8 @@ class MicrophoneAsyncModule(AsyncModule):
         # TODO docstring
         self._is_recording = False
 
-    # TODO combined 'do_recording' function
+
+    def do_recording(self):
+        # TODO docstring
+
+        return  # TODO

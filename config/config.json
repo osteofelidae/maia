@@ -11,8 +11,8 @@
 
     "extension_dir_path": "extensions",
 
-    "llm_path": "$PROJECTDIR/models/maia-llm/checkpoint-3000",
-    "llm_max_new_tokens": 1024,
+    "llm_path": "$PROJECTDIR/models/maia-llm",
+    "llm_max_new_tokens": 2048,
     "llm_add_generated_messages": true,
     "llm_message_history_length": 10,
     "llm_rag_length":5,

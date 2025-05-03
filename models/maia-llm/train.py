@@ -91,7 +91,7 @@ if __name__ == "__main__":
             per_device_train_batch_size=4,
             gradient_accumulation_steps=4,
             warmup_steps=5,
-            max_steps=2500,
+            max_steps=5000,
             learning_rate=2e-4,
             fp16=not unsloth.is_bfloat16_supported(),
             bf16=unsloth.is_bfloat16_supported(),
